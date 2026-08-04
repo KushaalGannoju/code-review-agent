@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+.env
+.env.local
+coverage/
+dist/
+build/
+.review-workspaces/
+*.log
+__pycache__/
+.pytest_cache/

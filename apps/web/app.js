@@ -1,0 +1,221 @@
+const loginButton = document.querySelector("#loginButton");
+const reviewForm = document.querySelector("#reviewForm");
+const reviewButton = document.querySelector("#reviewButton");
+const statusText = document.querySelector("#statusText");
+const severityFilter = document.querySelector("#severityFilter");
+
+const scoreValue = document.querySelector("#scoreValue");
+const scoreMeta = document.querySelector("#scoreMeta");
+const filesMetric = document.querySelector("#filesMetric");
+const findingsMetric = document.querySelector("#findingsMetric");
+const highMetric = document.querySelector("#highMetric");
+const testsMetric = document.querySelector("#testsMetric");
+
+const findingsList = document.querySelector("#findingsList");
+const languageList = document.querySelector("#languageList");
+const testsList = document.querySelector("#testsList");
+const quizList = document.querySelector("#quizList");
+
+let latestReview = null;
+
+const savedUser = localStorage.getItem("codeReviewAgentUser");
+if (savedUser) {
+  setLoggedIn(savedUser);
+}
+
+loginButton.addEventListener("click", () => {
+  const currentUser = localStorage.getItem("codeReviewAgentUser");
+  if (currentUser) {
+    localStorage.removeItem("codeReviewAgentUser");
+    loginButton.classList.remove("is-logged-in");
+    loginButton.innerHTML = '<span class="button-icon">GH</span><span>Login</span>';
+    statusText.textContent = "Logged out. You can still review public repositories.";
+    return;
+  }
+
+  localStorage.setItem("codeReviewAgentUser", "Demo Student");
+  setLoggedIn("Demo Student");
+  statusText.textContent = "Demo login active. GitHub OAuth arrives in Version 2.";
+});
+
+reviewForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const formData = new FormData(reviewForm);
+  const repoUrl = String(formData.get("repoUrl") || "").trim();
+
+  setLoading(true, "Cloning and analyzing repository...");
+  try {
+    const response = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repoUrl })
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Review failed.");
+    }
+
+    latestReview = payload.review;
+    renderReview(latestReview);
+    statusText.textContent = `Reviewed ${latestReview.repository.name} in ${latestReview.durationMs} ms.`;
+  } catch (error) {
+    statusText.textContent = error.message;
+  } finally {
+    setLoading(false);
+  }
+});
+
+severityFilter.addEventListener("change", () => {
+  if (latestReview) {
+    renderFindings(latestReview);
+  }
+});
+
+function setLoggedIn(name) {
+  loginButton.classList.add("is-logged-in");
+  loginButton.innerHTML = `<span class="button-icon">GH</span><span>${escapeHtml(name)}</span>`;
+}
+
+function setLoading(isLoading, message = "") {
+  reviewButton.disabled = isLoading;
+  reviewButton.querySelector("span:last-child").textContent = isLoading ? "Reviewing" : "Review";
+  if (message) {
+    statusText.textContent = message;
+  }
+}
+
+function renderReview(review) {
+  scoreValue.textContent = review.summary.score;
+  scoreMeta.textContent = qualityLabel(review.summary.score);
+  filesMetric.textContent = review.summary.filesReviewed;
+  findingsMetric.textContent = review.summary.findingsCount;
+  highMetric.textContent = review.summary.severity.critical + review.summary.severity.high;
+  testsMetric.textContent = review.summary.testsDetected;
+
+  renderFindings(review);
+  renderLanguages(review.summary.languages);
+  renderTests(review.testSuggestions);
+  renderQuiz(review.quiz);
+}
+
+function renderFindings(review) {
+  const severity = severityFilter.value;
+  const findings = review.files
+    .flatMap((file) =>
+      file.findings.map((finding) => ({
+        ...finding,
+        path: file.path,
+        language: file.language
+      }))
+    )
+    .filter((finding) => severity === "all" || finding.severity === severity);
+
+  if (findings.length === 0) {
+    findingsList.className = "findings-list empty-state";
+    findingsList.textContent = "No findings match the current filter.";
+    return;
+  }
+
+  findingsList.className = "findings-list";
+  findingsList.innerHTML = findings
+    .map(
+      (finding) => `
+        <article class="finding">
+          <div class="finding-header">
+            <div>
+              <p class="finding-title">${escapeHtml(finding.title)}</p>
+              <div class="finding-path">${escapeHtml(finding.path)}:${finding.line || 1}</div>
+            </div>
+            <span class="badge ${finding.severity}">${escapeHtml(finding.severity)}</span>
+          </div>
+          <div class="badge-row">
+            <span class="badge">${escapeHtml(finding.category)}</span>
+            <span class="badge">${escapeHtml(finding.language)}</span>
+          </div>
+          <p class="finding-copy">${escapeHtml(finding.message)}</p>
+          <p class="finding-copy"><strong>Fix:</strong> ${escapeHtml(finding.recommendation)}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderLanguages(languages) {
+  const entries = Object.entries(languages);
+  if (entries.length === 0) {
+    languageList.className = "compact-list empty-state";
+    languageList.textContent = "No repository analyzed.";
+    return;
+  }
+
+  languageList.className = "compact-list";
+  languageList.innerHTML = entries
+    .map(
+      ([language, count]) => `
+        <div class="compact-item">
+          <strong>${escapeHtml(language)}</strong>
+          <span>${count} supported file${count === 1 ? "" : "s"}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderTests(suggestions) {
+  if (!suggestions.length) {
+    testsList.className = "compact-list empty-state";
+    testsList.textContent = "No missing-test signals found.";
+    return;
+  }
+
+  testsList.className = "compact-list";
+  testsList.innerHTML = suggestions
+    .slice(0, 6)
+    .map(
+      (suggestion) => `
+        <div class="compact-item">
+          <strong>${escapeHtml(suggestion.title)}</strong>
+          <p>${escapeHtml(suggestion.description)}</p>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderQuiz(questions) {
+  if (!questions.length) {
+    quizList.className = "compact-list empty-state";
+    quizList.textContent = "No quiz questions yet.";
+    return;
+  }
+
+  quizList.className = "compact-list";
+  quizList.innerHTML = questions
+    .slice(0, 5)
+    .map(
+      (question) => `
+        <div class="compact-item">
+          <strong>${escapeHtml(question.question)}</strong>
+          <span>${escapeHtml(question.answerHint)}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function qualityLabel(score) {
+  if (score >= 85) return "Strong";
+  if (score >= 70) return "Healthy";
+  if (score >= 50) return "Needs work";
+  return "High risk";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}

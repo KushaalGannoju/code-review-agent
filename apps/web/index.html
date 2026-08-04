@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Code Review Agent</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Student Project Reviewer</p>
+          <h1>Code Review Agent</h1>
+        </div>
+        <button id="loginButton" class="ghost-button" type="button" aria-live="polite">
+          <span class="button-icon">GH</span>
+          <span>Login</span>
+        </button>
+      </header>
+
+      <section class="review-console" aria-label="Repository review console">
+        <form id="reviewForm" class="repo-form">
+          <label for="repoUrl">GitHub repository URL</label>
+          <div class="input-row">
+            <input
+              id="repoUrl"
+              name="repoUrl"
+              type="url"
+              required
+              placeholder="https://github.com/owner/repository"
+              autocomplete="off"
+            />
+            <button id="reviewButton" type="submit">
+              <span class="button-icon">Run</span>
+              <span>Review</span>
+            </button>
+          </div>
+          <p id="statusText" class="status-text" role="status">Ready for a public repository.</p>
+        </form>
+
+        <div class="score-panel" aria-label="Review score">
+          <span class="score-label">Score</span>
+          <strong id="scoreValue">--</strong>
+          <span id="scoreMeta">No review yet</span>
+        </div>
+      </section>
+
+      <section class="metrics-grid" aria-label="Review metrics">
+        <div class="metric">
+          <span>Files</span>
+          <strong id="filesMetric">0</strong>
+        </div>
+        <div class="metric">
+          <span>Findings</span>
+          <strong id="findingsMetric">0</strong>
+        </div>
+        <div class="metric">
+          <span>High Risk</span>
+          <strong id="highMetric">0</strong>
+        </div>
+        <div class="metric">
+          <span>Tests Seen</span>
+          <strong id="testsMetric">0</strong>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <div class="panel findings-panel">
+          <div class="panel-heading">
+            <h2>Findings</h2>
+            <select id="severityFilter" aria-label="Filter findings by severity">
+              <option value="all">All severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div id="findingsList" class="findings-list empty-state">
+            Run a review to see file-level issues here.
+          </div>
+        </div>
+
+        <aside class="side-rail">
+          <div class="panel">
+            <h2>Language Mix</h2>
+            <div id="languageList" class="compact-list empty-state">No repository analyzed.</div>
+          </div>
+
+          <div class="panel">
+            <h2>Suggested Tests</h2>
+            <div id="testsList" class="compact-list empty-state">No suggestions yet.</div>
+          </div>
+
+          <div class="panel">
+            <h2>Code Quiz</h2>
+            <div id="quizList" class="compact-list empty-state">No questions yet.</div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
