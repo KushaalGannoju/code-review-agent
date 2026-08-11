@@ -1,4 +1,3 @@
-const loginButton = document.querySelector("#loginButton");
 const reviewForm = document.querySelector("#reviewForm");
 const reviewButton = document.querySelector("#reviewButton");
 const statusText = document.querySelector("#statusText");
@@ -10,55 +9,60 @@ const filesMetric = document.querySelector("#filesMetric");
 const findingsMetric = document.querySelector("#findingsMetric");
 const highMetric = document.querySelector("#highMetric");
 const testsMetric = document.querySelector("#testsMetric");
+const reviewsLeft = document.querySelector("#reviewsLeft");
+const aiLeft = document.querySelector("#aiLeft");
+const tokensLeft = document.querySelector("#tokensLeft");
+const providerBadge = document.querySelector("#providerBadge");
+const reviewOverview = document.querySelector("#reviewOverview");
+const priorityList = document.querySelector("#priorityList");
+const nextStepsList = document.querySelector("#nextStepsList");
 
 const findingsList = document.querySelector("#findingsList");
 const languageList = document.querySelector("#languageList");
 const testsList = document.querySelector("#testsList");
 const quizList = document.querySelector("#quizList");
 
+const apiBaseUrl = normalizeApiBaseUrl(
+  new URLSearchParams(window.location.search).get("api") ||
+    window.CODE_REVIEW_CONFIG?.apiBaseUrl ||
+    localStorage.getItem("codeReviewApiBaseUrl") ||
+    ""
+);
+
+const sessionId = getOrCreateSessionId();
 let latestReview = null;
 
-const savedUser = localStorage.getItem("codeReviewAgentUser");
-if (savedUser) {
-  setLoggedIn(savedUser);
+if (apiBaseUrl) {
+  localStorage.setItem("codeReviewApiBaseUrl", apiBaseUrl);
 }
 
-loginButton.addEventListener("click", () => {
-  const currentUser = localStorage.getItem("codeReviewAgentUser");
-  if (currentUser) {
-    localStorage.removeItem("codeReviewAgentUser");
-    loginButton.classList.remove("is-logged-in");
-    loginButton.innerHTML = '<span class="button-icon">GH</span><span>Login</span>';
-    statusText.textContent = "Logged out. You can still review public repositories.";
-    return;
-  }
-
-  localStorage.setItem("codeReviewAgentUser", "Demo Student");
-  setLoggedIn("Demo Student");
-  statusText.textContent = "Demo login active. GitHub OAuth arrives in Version 2.";
-});
+loadLimits();
 
 reviewForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(reviewForm);
   const repoUrl = String(formData.get("repoUrl") || "").trim();
 
-  setLoading(true, "Cloning and analyzing repository...");
+  setLoading(true, "Cloning the repo and reading the code paths that matter...");
   try {
-    const response = await fetch("/api/reviews", {
+    const response = await fetch(`${apiBaseUrl}/api/reviews`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repoUrl })
+      headers: {
+        "Content-Type": "application/json",
+        "X-Review-Session": sessionId
+      },
+      body: JSON.stringify({ repoUrl, useGemini: true })
     });
 
     const payload = await response.json();
+    updateLimits(payload.limits);
     if (!response.ok) {
       throw new Error(payload.error || "Review failed.");
     }
 
     latestReview = payload.review;
     renderReview(latestReview);
-    statusText.textContent = `Reviewed ${latestReview.repository.name} in ${latestReview.durationMs} ms.`;
+    statusText.textContent = reviewStatus(latestReview);
   } catch (error) {
     statusText.textContent = error.message;
   } finally {
@@ -72,9 +76,16 @@ severityFilter.addEventListener("change", () => {
   }
 });
 
-function setLoggedIn(name) {
-  loginButton.classList.add("is-logged-in");
-  loginButton.innerHTML = `<span class="button-icon">GH</span><span>${escapeHtml(name)}</span>`;
+async function loadLimits() {
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/limits`, {
+      headers: { "X-Review-Session": sessionId }
+    });
+    const payload = await response.json();
+    updateLimits(payload.limits);
+  } catch {
+    updateLimits();
+  }
 }
 
 function setLoading(isLoading, message = "") {
@@ -92,11 +103,41 @@ function renderReview(review) {
   findingsMetric.textContent = review.summary.findingsCount;
   highMetric.textContent = review.summary.severity.critical + review.summary.severity.high;
   testsMetric.textContent = review.summary.testsDetected;
+  providerBadge.textContent = review.narrative.providerLabel;
+  reviewOverview.textContent = review.narrative.overview;
 
+  renderPriorities(review.narrative.priorities);
+  renderNextSteps(review.narrative.nextSteps);
   renderFindings(review);
   renderLanguages(review.summary.languages);
   renderTests(review.testSuggestions);
   renderQuiz(review.quiz);
+}
+
+function renderNextSteps(steps = []) {
+  nextStepsList.innerHTML = steps.length
+    ? `<span>Next</span>${steps
+        .slice(0, 4)
+        .map((step) => `<strong>${escapeHtml(step)}</strong>`)
+        .join("")}`
+    : "";
+}
+
+function renderPriorities(priorities = []) {
+  priorityList.innerHTML = priorities
+    .slice(0, 4)
+    .map(
+      (priority) => `
+        <article class="priority-item">
+          <span class="priority-dot ${priority.severity || "medium"}"></span>
+          <div>
+            <strong>${escapeHtml(priority.title)}</strong>
+            <p>${escapeHtml(priority.detail)}</p>
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
 function renderFindings(review) {
@@ -186,7 +227,7 @@ function renderTests(suggestions) {
 function renderQuiz(questions) {
   if (!questions.length) {
     quizList.className = "compact-list empty-state";
-    quizList.textContent = "No quiz questions yet.";
+    quizList.textContent = "No questions yet.";
     return;
   }
 
@@ -204,11 +245,42 @@ function renderQuiz(questions) {
     .join("");
 }
 
+function updateLimits(limits = {}) {
+  reviewsLeft.textContent = limits.reviewsRemaining ?? 5;
+  aiLeft.textContent = limits.geminiRemaining ?? 3;
+  tokensLeft.textContent = compactNumber(limits.tokensRemaining ?? 12000);
+}
+
 function qualityLabel(score) {
   if (score >= 85) return "Strong";
   if (score >= 70) return "Healthy";
   if (score >= 50) return "Needs work";
   return "High risk";
+}
+
+function getOrCreateSessionId() {
+  const existing = localStorage.getItem("codeReviewSessionId");
+  if (existing) return existing;
+  const next = crypto.randomUUID();
+  localStorage.setItem("codeReviewSessionId", next);
+  return next;
+}
+
+function normalizeApiBaseUrl(value) {
+  return String(value || "").replace(/\/$/, "");
+}
+
+function reviewStatus(review) {
+  const base = `Reviewed ${review.repository.name} in ${review.durationMs} ms.`;
+  if (review.ai?.used) return `${base} Gemini wrote the reviewer notes.`;
+  if (review.ai?.skippedReason) return `${base} Static mode: ${review.ai.skippedReason}`;
+  return base;
+}
+
+function compactNumber(value) {
+  const number = Number(value);
+  if (number >= 1000) return `${Math.floor(number / 1000)}k`;
+  return String(number);
 }
 
 function escapeHtml(value) {

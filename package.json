@@ -5,6 +5,7 @@
   "description": "AI-ready code review agent for student GitHub projects.",
   "type": "module",
   "scripts": {
+    "build:web": "node scripts/build-web-config.js",
     "dev": "node apps/api/server.js",
     "start": "NODE_ENV=production node apps/api/server.js",
     "test": "node --test"

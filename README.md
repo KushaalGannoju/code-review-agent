@@ -1,18 +1,27 @@
 # Code Review Agent
 
-AI-ready code review website for student GitHub projects. Version 1 is intentionally free to run: it uses deterministic static analysis for Python and JavaScript/TypeScript, then presents review findings, code quality scoring, test suggestions, and quiz questions in a dashboard.
+Code Review Agent is a web reviewer for student GitHub projects. Paste a public GitHub repository URL and the app clones it, analyzes supported Python and JavaScript/TypeScript files, scores the repository, and produces practical review notes.
 
-## Version 1
+Version 2 combines deterministic static analysis with an optional Gemini free-tier review layer. The app still works without a Gemini key, but when `GEMINI_API_KEY` is configured the reviewer notes become more natural and mentor-like.
 
-What works now:
+Repository: `KushaalGannoju/code-review-agent`
 
-- Demo login state in the browser
-- Paste a public GitHub repository URL
-- Backend clones the repository with `git clone --depth=1`
-- Python AST analysis for complexity, unsafe calls, broad exceptions, SQL injection patterns, and hardcoded secrets
-- JavaScript/TypeScript heuristic analysis for complexity, risky browser/node patterns, SQL injection patterns, and hardcoded secrets
-- Duplicate code detection across supported files
-- Quality score, severity counts, file summaries, findings, test suggestions, and code understanding quiz questions
+## What V2 Does
+
+- No login flow
+- Public GitHub repo URL review
+- Python AST analysis
+- JavaScript/TypeScript heuristic analysis
+- Security checks for secrets, unsafe dynamic execution, unsafe HTML injection, command injection, SQL injection, and unsafe deserialization
+- Complexity scoring
+- Duplicate code detection
+- Test suggestions
+- Code-understanding quiz questions
+- Gemini-generated reviewer notes when `GEMINI_API_KEY` is available
+- Static fallback when Gemini is not configured or the demo token budget is exhausted
+- Visible demo limits for reviews, Gemini calls, and estimated input tokens
+- Frontend-ready Netlify config
+- Backend-ready Dockerfile for Railway or similar platforms
 
 ## Run Locally
 
@@ -20,7 +29,7 @@ What works now:
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://127.0.0.1:5173`.
 
 Requirements:
 
@@ -28,97 +37,116 @@ Requirements:
 - Python 3.11+
 - Git installed and available on `PATH`
 
+## Gemini Setup
+
+Create a `.env` file locally:
+
+```bash
+cp .env.example .env
+```
+
+Add your key:
+
+```bash
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+Keep the key server-side only. Do not put it in `apps/web/config.js`, browser code, screenshots, README examples, or GitHub commits.
+
+## Demo Limits
+
+The limits are intentionally lightweight and in-memory for V2:
+
+```bash
+SESSION_REVIEW_LIMIT=5
+SESSION_GEMINI_LIMIT=3
+SESSION_TOKEN_LIMIT=12000
+REVIEW_PROMPT_TOKEN_LIMIT=4500
+```
+
+These limits reset when the backend process restarts or when a user starts with a new browser session id. They are good enough for a resume/demo version, but not a production abuse-prevention system.
+
+## Deployment
+
+You can keep this as a monorepo. You do not need separate frontend and backend repositories.
+
+### Backend on Railway
+
+Deploy the repository root as a Railway service. Railway can use the included `Dockerfile`.
+
+Set environment variables:
+
+```bash
+HOST=0.0.0.0
+NODE_ENV=production
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
+ALLOWED_ORIGINS=https://your-netlify-site.netlify.app
+SESSION_REVIEW_LIMIT=5
+SESSION_GEMINI_LIMIT=3
+SESSION_TOKEN_LIMIT=12000
+REVIEW_PROMPT_TOKEN_LIMIT=4500
+```
+
+After deployment, copy the Railway backend URL.
+
+### Frontend on Netlify
+
+Connect the same GitHub repo to Netlify.
+
+Use:
+
+```text
+Build command: npm run build:web
+Publish directory: apps/web
+```
+
+Set this Netlify environment variable:
+
+```bash
+PUBLIC_API_BASE_URL=https://your-railway-backend.up.railway.app
+```
+
+Netlify runs `scripts/build-web-config.js`, which writes `apps/web/config.js` with the backend URL.
+
 ## Roadmap
 
 ### V1: Static Review MVP
 
-Goal: prove the core workflow without cost.
+- Build a basic web app.
+- Paste a public repo URL.
+- Clone the repo locally.
+- Analyze Python and JavaScript/TypeScript files.
+- Show findings, score, test suggestions, and quiz questions.
 
-- Build a web app where the student can log in locally and paste a public GitHub repo URL.
-- Clone the repo into a temporary workspace.
-- Parse Python with `ast`.
-- Analyze JavaScript/TypeScript with lightweight heuristics first.
-- Detect complexity, hardcoded secrets, unsafe execution, unsafe HTML injection, SQL string interpolation, duplicate code, and missing test signals.
-- Generate a quality score, file-level results, test suggestions, and educational quiz questions.
-- Keep everything free and locally runnable.
+### V2: Gemini Review and Polished Demo
 
-What you should understand:
+- Remove login entirely.
+- Improve the UI into a modern developer-tool dashboard.
+- Add visible review/session/token limits.
+- Add Gemini review notes through a backend-only API key.
+- Keep a static fallback when Gemini is unavailable.
+- Prepare deployment for Netlify frontend plus Railway backend.
 
-- How repository ingestion works.
-- Why static analysis should run before LLM analysis.
-- How AST-based analysis differs from regex scanning.
-- How severity scoring turns raw findings into a useful dashboard.
-- Why V1 should avoid paid APIs until the product loop is proven.
+### V3: Persistence and Better Language Intelligence
 
-### V2: Real Auth, Persistence, and Better Analysis
+- Add PostgreSQL for review history.
+- Move analysis jobs into a background worker.
+- Add job status states.
+- Replace JS/TS heuristics with a real parser such as tree-sitter or Babel.
+- Add dependency graph extraction.
+- Add review caching to reduce Gemini usage.
 
-Goal: turn the demo into a real product-shaped app.
+### V4: Resume-Grade Product
 
-- Replace demo login with GitHub OAuth.
-- Let the user review public repos by URL and private repos through authorization.
-- Store users, repos, review jobs, files, and findings in PostgreSQL.
-- Move repo cloning and analysis into a background worker.
-- Add job states: queued, cloning, analyzing, complete, failed.
-- Add review history.
-- Add per-language analyzers behind a common interface.
-- Replace JS heuristics with `tree-sitter` or Babel parsing.
-- Add coverage/test framework detection.
-- Add a safer sandbox strategy for cloned repos.
-
-What you should understand:
-
-- OAuth flow and token storage.
-- Background jobs vs request/response work.
-- Database schema design for review results.
-- Why analyzing untrusted repositories needs careful isolation.
-- How parser adapters make multi-language support maintainable.
-
-### V3: Free-Tier LLM Reasoning and PR Reviews
-
-Goal: add the AI layer without making the app depend on expensive usage.
-
-- Add a provider interface: `StaticOnlyProvider`, `GeminiProvider`, and later `OpenAIProvider`.
-- Use Gemini free tier as the default student-friendly option.
-- Send the LLM only selected snippets and structured static facts.
-- Ask for strict JSON output with title, severity, category, line, explanation, and suggested fix.
-- Generate PR summaries.
-- Post comments to GitHub pull requests.
-- Deduplicate repeated comments between review runs.
-- Generate patch diffs for simple issues.
-- Add rate limits and token budgeting.
-
-What you should understand:
-
-- Prompt design for structured review output.
-- Context selection and token budgeting.
-- Why the LLM should explain static findings instead of scanning the whole repo blindly.
-- GitHub review APIs and inline PR comments.
-- Cost controls, caching, and graceful fallback when the LLM quota is exhausted.
-
-### V4: Feature-Loaded Resume Version
-
-Goal: make it stand out as a serious developer tool.
-
-- Add a code quality score trend over time.
-- Add dependency graph visualization.
-- Add duplicate code clusters with side-by-side snippets.
-- Add time complexity classification for key functions.
+- Add PR comment generation.
+- Add patch suggestions.
 - Add generated tests for `pytest`, `jest`, and `vitest`.
-- Add “Explain your own code” quiz mode with answer evaluation.
-- Add team/classroom mode for instructors.
-- Add repository risk profile: security, maintainability, performance, testing.
-- Add automatic patch PR creation.
-- Add deployment with Docker, hosted frontend, hosted API, database, and worker.
-- Add strong README, demo video, architecture diagram, and resume-ready metrics.
+- Add duplicate-code cluster views.
+- Add score trends over time.
+- Add deployment docs, architecture diagram, demo video, and ATS-focused resume bullets.
 
-What you should understand:
+## Why This Project Stands Out
 
-- Product polish and demo storytelling.
-- Evaluation: measuring whether AI comments are useful.
-- Security review limitations and false positives.
-- Scalable architecture for long-running code analysis.
-- How to explain this project as static analysis plus LLM reasoning, not just a chatbot.
-
-## Provider Choice
-
-If the project must be completely free for you, start with Gemini as the optional LLM provider in V3 and keep V1/V2 useful without any LLM. OpenAI is excellent for code reasoning, but API usage is billed separately from ChatGPT subscriptions. Gemini currently has a documented free tier for the Developer API, with the tradeoff that free-tier data may be used to improve Google products.
+This is not just an LLM wrapper. Static analysis produces grounded findings first, then Gemini improves prioritization and wording. That makes the system cheaper, more explainable, and more reliable than sending an entire repository directly to a model.

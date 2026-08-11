@@ -8,47 +8,90 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Student Project Reviewer</p>
-          <h1>Code Review Agent</h1>
-        </div>
-        <button id="loginButton" class="ghost-button" type="button" aria-live="polite">
-          <span class="button-icon">GH</span>
-          <span>Login</span>
-        </button>
+      <header class="hero">
+        <nav class="nav-row" aria-label="Project navigation">
+          <a class="brand-mark" href="https://github.com/KushaalGannoju/code-review-agent">
+            <span class="mark-glyph">CR</span>
+            <span>Code Review Agent</span>
+          </a>
+          <div class="nav-meta">
+            <span>Python</span>
+            <span>JavaScript</span>
+            <span>Gemini-ready</span>
+          </div>
+        </nav>
+
+        <section class="hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Static analysis plus free-tier LLM review</p>
+            <h1>Paste a repo. Get a review that sounds like a real teammate.</h1>
+            <p class="hero-lede">
+              The agent clones a public GitHub project, checks Python and JavaScript for risk,
+              and uses Gemini to turn the raw signals into a practical review.
+            </p>
+          </div>
+
+          <section class="review-console" aria-label="Repository review console">
+            <form id="reviewForm" class="repo-form">
+              <label for="repoUrl">GitHub repository URL</label>
+              <div class="input-row">
+                <input
+                  id="repoUrl"
+                  name="repoUrl"
+                  type="url"
+                  required
+                  placeholder="https://github.com/owner/repository"
+                  autocomplete="off"
+                />
+                <button id="reviewButton" type="submit">
+                  <span class="button-icon">Run</span>
+                  <span>Review</span>
+                </button>
+              </div>
+              <p id="statusText" class="status-text" role="status">Ready for a public repository.</p>
+            </form>
+
+            <div class="limit-grid" aria-label="Session usage limits">
+              <div>
+                <span>Reviews left</span>
+                <strong id="reviewsLeft">5</strong>
+              </div>
+              <div>
+                <span>AI reviews left</span>
+                <strong id="aiLeft">3</strong>
+              </div>
+              <div>
+                <span>Token budget</span>
+                <strong id="tokensLeft">12k</strong>
+              </div>
+            </div>
+          </section>
+        </section>
       </header>
 
-      <section class="review-console" aria-label="Repository review console">
-        <form id="reviewForm" class="repo-form">
-          <label for="repoUrl">GitHub repository URL</label>
-          <div class="input-row">
-            <input
-              id="repoUrl"
-              name="repoUrl"
-              type="url"
-              required
-              placeholder="https://github.com/owner/repository"
-              autocomplete="off"
-            />
-            <button id="reviewButton" type="submit">
-              <span class="button-icon">Run</span>
-              <span>Review</span>
-            </button>
-          </div>
-          <p id="statusText" class="status-text" role="status">Ready for a public repository.</p>
-        </form>
-
-        <div class="score-panel" aria-label="Review score">
+      <section class="summary-band" aria-label="Review summary">
+        <div class="score-panel">
           <span class="score-label">Score</span>
-          <strong id="scoreValue">--</strong>
+          <strong id="scoreValue">0</strong>
           <span id="scoreMeta">No review yet</span>
+        </div>
+        <div class="review-brief">
+          <div class="panel-heading compact">
+            <h2>Reviewer Notes</h2>
+            <span id="providerBadge" class="status-pill">Static mode</span>
+          </div>
+          <p id="reviewOverview">
+            Run a review and this space will turn the raw findings into a short, human-readable
+            assessment.
+          </p>
+          <div id="priorityList" class="priority-list"></div>
+          <div id="nextStepsList" class="next-steps"></div>
         </div>
       </section>
 
       <section class="metrics-grid" aria-label="Review metrics">
         <div class="metric">
-          <span>Files</span>
+          <span>Files Reviewed</span>
           <strong id="filesMetric">0</strong>
         </div>
         <div class="metric">
@@ -68,7 +111,10 @@
       <section class="workspace-grid">
         <div class="panel findings-panel">
           <div class="panel-heading">
-            <h2>Findings</h2>
+            <div>
+              <h2>Review Findings</h2>
+              <p>Grounded in static analysis, then rewritten into practical guidance.</p>
+            </div>
             <select id="severityFilter" aria-label="Filter findings by severity">
               <option value="all">All severities</option>
               <option value="critical">Critical</option>
@@ -101,6 +147,7 @@
       </section>
     </main>
 
+    <script src="/config.js"></script>
     <script type="module" src="/app.js"></script>
   </body>
 </html>
