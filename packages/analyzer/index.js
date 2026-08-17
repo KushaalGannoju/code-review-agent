@@ -46,8 +46,8 @@ export async function analyzeRepository(root, context = {}) {
     }
   }
 
-  const duplicateFindings = detectDuplicateCode(analyzedFiles);
-  for (const duplicate of duplicateFindings) {
+  const duplicateClusters = detectDuplicateCode(analyzedFiles);
+  for (const duplicate of duplicateClusters) {
     const targetFile = analyzedFiles.find((file) => file.path === duplicate.path);
     if (targetFile) {
       targetFile.findings.push(duplicate.finding);
@@ -55,14 +55,18 @@ export async function analyzeRepository(root, context = {}) {
   }
 
   const summary = buildSummary(analyzedFiles);
+  const insights = buildInsights(analyzedFiles, duplicateClusters);
   return {
     id: cryptoRandomId(),
     repository,
     reviewedAt: new Date().toISOString(),
     summary,
+    insights,
     files: analyzedFiles,
     testSuggestions: buildTestSuggestions(analyzedFiles),
-    quiz: buildQuiz(analyzedFiles)
+    generatedTests: buildGeneratedTests(analyzedFiles),
+    quiz: buildQuiz(analyzedFiles),
+    reportMarkdown: buildMarkdownReport(repository, summary, insights, analyzedFiles)
   };
 }
 
@@ -397,6 +401,42 @@ function buildSummary(files) {
   };
 }
 
+function buildInsights(files, duplicateClusters) {
+  const security = countFindings(files, "security");
+  const maintainability = countFindings(files, "maintainability");
+  const correctness = countFindings(files, "correctness");
+  const testingGap = files.some((file) => file.isTest) ? 20 : 75;
+
+  return {
+    riskProfile: {
+      security,
+      maintainability,
+      correctness,
+      testing: testingGap
+    },
+    complexityHotspots: files
+      .flatMap((file) =>
+        file.functions.map((fn) => ({
+          file: file.path,
+          name: fn.name,
+          line: fn.line,
+          complexity: fn.complexity,
+          label: complexityLabel(fn.complexity)
+        }))
+      )
+      .sort((left, right) => right.complexity - left.complexity)
+      .slice(0, 8),
+    dependencyGraph: files
+      .filter((file) => file.imports.length > 0)
+      .slice(0, 18)
+      .map((file) => ({
+        file: file.path,
+        imports: file.imports.slice(0, 10)
+      })),
+    duplicateClusters: duplicateClusters.slice(0, 8)
+  };
+}
+
 function buildTestSuggestions(files) {
   const hasAnyTests = files.some((file) => file.isTest);
   const suggestions = [];
@@ -420,6 +460,37 @@ function buildTestSuggestions(files) {
   }
 
   return suggestions;
+}
+
+function buildGeneratedTests(files) {
+  return files
+    .filter((file) => !file.isTest && file.functions.length > 0)
+    .slice(0, 4)
+    .map((file) => {
+      const fn = file.functions[0];
+      const isPython = file.language === "Python";
+      return {
+        file: file.path,
+        framework: isPython ? "pytest" : "vitest",
+        title: `Starter test for ${fn.name}`,
+        code: isPython
+          ? [
+              `def test_${fn.name}_handles_edge_input():`,
+              "    # Arrange: import the function and build a boundary input",
+              "    # Act: call the function",
+              "    # Assert: verify the expected result or error path",
+              "    assert True"
+            ].join("\n")
+          : [
+              `test('${fn.name} handles edge input', () => {`,
+              "  // Arrange: import the function and build a boundary input",
+              "  // Act: call the function",
+              "  // Assert: verify the expected result or error path",
+              "  expect(true).toBe(true);",
+              "});"
+            ].join("\n")
+      };
+    });
 }
 
 function buildQuiz(files) {
@@ -452,6 +523,49 @@ function buildQuiz(files) {
   }
 
   return questions;
+}
+
+function buildMarkdownReport(repository, summary, insights, files) {
+  const topFindings = files
+    .flatMap((file) => file.findings.map((item) => ({ ...item, path: file.path })))
+    .slice(0, 8);
+
+  return [
+    `# Code Review Summary for ${repository.owner}/${repository.name}`,
+    "",
+    `Score: ${summary.score}/100`,
+    `Files reviewed: ${summary.filesReviewed}`,
+    `Findings: ${summary.findingsCount}`,
+    "",
+    "## Top Findings",
+    ...(topFindings.length
+      ? topFindings.map((item) => `- ${item.severity.toUpperCase()}: ${item.title} in ${item.path}:${item.line || 1}`)
+      : ["- No static-analysis findings in supported files."]),
+    "",
+    "## Complexity Hotspots",
+    ...(insights.complexityHotspots.length
+      ? insights.complexityHotspots.map(
+          (item) => `- ${item.name} in ${item.file}:${item.line} has ${item.label} complexity (${item.complexity}).`
+        )
+      : ["- No function complexity hotspots detected."]),
+    "",
+    "## Next Steps",
+    "- Fix critical and high severity findings first.",
+    "- Add tests for risky files and boundary inputs.",
+    "- Re-run the review after changes."
+  ].join("\n");
+}
+
+function countFindings(files, category) {
+  const raw = files.flatMap((file) => file.findings).filter((item) => item.category === category).length;
+  return Math.min(100, raw * 18);
+}
+
+function complexityLabel(value) {
+  if (value >= 18) return "very high";
+  if (value >= 12) return "high";
+  if (value >= 8) return "moderate";
+  return "low";
 }
 
 function finding({ title, severity, category, line, message, recommendation }) {

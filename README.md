@@ -16,7 +16,12 @@ Repository: `KushaalGannoju/code-review-agent`
 - Complexity scoring
 - Duplicate code detection
 - Test suggestions
+- Generated `pytest`/`vitest` starter tests
 - Code-understanding quiz questions
+- Complexity hotspot ranking
+- Import-based dependency graph summary
+- PR-style markdown review summary
+- Risk profile for security, maintainability, correctness, and testing
 - Gemini-generated reviewer notes when `GEMINI_API_KEY` is available
 - Static fallback when Gemini is not configured or the demo token budget is exhausted
 - Visible demo limits for reviews, Gemini calls, and estimated input tokens
@@ -49,7 +54,7 @@ Add your key:
 
 ```bash
 GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-flash-latest
 ```
 
 Keep the key server-side only. Do not put it in `apps/web/config.js`, browser code, screenshots, README examples, or GitHub commits.
@@ -81,7 +86,7 @@ Set environment variables:
 HOST=0.0.0.0
 NODE_ENV=production
 GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-flash-latest
 ALLOWED_ORIGINS=https://your-netlify-site.netlify.app
 SESSION_REVIEW_LIMIT=5
 SESSION_GEMINI_LIMIT=3
@@ -129,23 +134,14 @@ Netlify runs `scripts/build-web-config.js`, which writes `apps/web/config.js` wi
 - Keep a static fallback when Gemini is unavailable.
 - Prepare deployment for Netlify frontend plus Railway backend.
 
-### V3: Persistence and Better Language Intelligence
+### Final Update: Resume-Ready Feature Set
 
-- Add PostgreSQL for review history.
-- Move analysis jobs into a background worker.
-- Add job status states.
-- Replace JS/TS heuristics with a real parser such as tree-sitter or Babel.
-- Add dependency graph extraction.
-- Add review caching to reduce Gemini usage.
-
-### V4: Resume-Grade Product
-
-- Add PR comment generation.
-- Add patch suggestions.
-- Add generated tests for `pytest`, `jest`, and `vitest`.
-- Add duplicate-code cluster views.
-- Add score trends over time.
-- Add deployment docs, architecture diagram, demo video, and ATS-focused resume bullets.
+- Keep the project lightweight enough to deploy for free.
+- Use Gemini for natural reviewer notes, with static fallback.
+- Add complexity hotspots and import dependency summaries.
+- Add generated test starters for Python and JavaScript/TypeScript.
+- Add a markdown PR summary that can be copied into GitHub.
+- Keep real GitHub PR posting, database history, and background workers out of scope until a paid/hosted backend is needed.
 
 ## Why This Project Stands Out
 

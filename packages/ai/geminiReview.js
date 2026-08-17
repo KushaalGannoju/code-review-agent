@@ -1,4 +1,5 @@
-const defaultModel = "gemini-2.5-flash";
+const defaultModel = "gemini-flash-latest";
+const fallbackModels = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"];
 
 export async function enrichReviewWithGemini(review, options = {}) {
   const apiKey = options.apiKey || "";
@@ -29,7 +30,8 @@ export async function enrichReviewWithGemini(review, options = {}) {
   }
 
   try {
-    const payload = await callGemini({ apiKey, model, prompt });
+    const result = await callGeminiWithFallback({ apiKey, model, prompt });
+    const payload = result.payload;
     const narrative = normalizeNarrative(payload, staticNarrative);
     review.narrative = {
       ...narrative,
@@ -38,7 +40,7 @@ export async function enrichReviewWithGemini(review, options = {}) {
     };
     review.ai = {
       provider: "gemini",
-      model,
+      model: result.model,
       used: true,
       skippedReason: null,
       estimatedInputTokens
@@ -126,6 +128,24 @@ function buildPrompt(review) {
   ].join("\n\n");
 }
 
+async function callGeminiWithFallback({ apiKey, model, prompt }) {
+  const candidates = [...new Set([model, ...fallbackModels])];
+  let lastError;
+
+  for (const candidate of candidates) {
+    try {
+      return { model: candidate, payload: await callGemini({ apiKey, model: candidate, prompt }) };
+    } catch (error) {
+      lastError = error;
+      if (!/404|429|503|not found|not available|high demand|quota/i.test(error.message)) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 async function callGemini({ apiKey, model, prompt }) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     model
@@ -146,7 +166,8 @@ async function callGemini({ apiKey, model, prompt }) {
       ],
       generationConfig: {
         temperature: 0.45,
-        maxOutputTokens: 900
+        maxOutputTokens: 900,
+        responseMimeType: "application/json"
       }
     })
   });

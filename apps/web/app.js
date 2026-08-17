@@ -20,7 +20,10 @@ const nextStepsList = document.querySelector("#nextStepsList");
 const findingsList = document.querySelector("#findingsList");
 const languageList = document.querySelector("#languageList");
 const testsList = document.querySelector("#testsList");
+const hotspotsList = document.querySelector("#hotspotsList");
+const generatedTestsList = document.querySelector("#generatedTestsList");
 const quizList = document.querySelector("#quizList");
+const reportMarkdown = document.querySelector("#reportMarkdown");
 
 const apiBaseUrl = normalizeApiBaseUrl(
   new URLSearchParams(window.location.search).get("api") ||
@@ -111,7 +114,10 @@ function renderReview(review) {
   renderFindings(review);
   renderLanguages(review.summary.languages);
   renderTests(review.testSuggestions);
+  renderHotspots(review.insights?.complexityHotspots || []);
+  renderGeneratedTests(review.generatedTests || []);
   renderQuiz(review.quiz);
+  reportMarkdown.textContent = review.reportMarkdown || "No markdown report generated.";
 }
 
 function renderNextSteps(steps = []) {
@@ -218,6 +224,47 @@ function renderTests(suggestions) {
         <div class="compact-item">
           <strong>${escapeHtml(suggestion.title)}</strong>
           <p>${escapeHtml(suggestion.description)}</p>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderHotspots(hotspots) {
+  if (!hotspots.length) {
+    hotspotsList.className = "compact-list empty-state";
+    hotspotsList.textContent = "No complexity hotspots detected.";
+    return;
+  }
+  hotspotsList.className = "compact-list";
+  hotspotsList.innerHTML = hotspots
+    .slice(0, 5)
+    .map(
+      (item) => `
+        <div class="compact-item">
+          <strong>${escapeHtml(item.name)} (${escapeHtml(item.label)})</strong>
+          <p>${escapeHtml(item.file)}:${item.line} · complexity ${item.complexity}</p>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderGeneratedTests(tests) {
+  if (!tests.length) {
+    generatedTestsList.className = "compact-list empty-state";
+    generatedTestsList.textContent = "No generated test starters yet.";
+    return;
+  }
+  generatedTestsList.className = "compact-list";
+  generatedTestsList.innerHTML = tests
+    .slice(0, 3)
+    .map(
+      (test) => `
+        <div class="compact-item">
+          <strong>${escapeHtml(test.title)}</strong>
+          <p>${escapeHtml(test.framework)} · ${escapeHtml(test.file)}</p>
+          <pre class="code-snippet">${escapeHtml(test.code)}</pre>
         </div>
       `
     )

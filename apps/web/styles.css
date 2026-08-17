@@ -533,6 +533,25 @@ h1 {
   line-height: 1.45;
 }
 
+.code-snippet,
+.report-box {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0d1219;
+  color: #d7e0ee;
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.compact-item .code-snippet {
+  margin: 10px 0 0;
+}
+
 .side-rail {
   display: grid;
   gap: 16px;

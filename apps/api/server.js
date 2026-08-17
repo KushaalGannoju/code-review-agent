@@ -12,6 +12,7 @@ import { enrichReviewWithGemini } from "../../packages/ai/geminiReview.js";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const repoRoot = resolve(__dirname, "../..");
 loadLocalEnv(join(repoRoot, ".env"));
+loadLocalEnv(join(repoRoot, ".env.local"));
 const webRoot = join(repoRoot, "apps/web");
 const port = Number(process.env.PORT || 5173);
 const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
@@ -130,7 +131,7 @@ async function maybeAddGeminiReview(review, body, state) {
   const enhanced = await enrichReviewWithGemini(review, {
     enabled: wantsGemini && hasGeminiBudget,
     apiKey: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    model: process.env.GEMINI_MODEL || "gemini-flash-latest",
     promptTokenLimit: Math.min(
       limitsConfig.promptTokens,
       Math.max(0, limitsConfig.tokens - state.tokensUsed)
