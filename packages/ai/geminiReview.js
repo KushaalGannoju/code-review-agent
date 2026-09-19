@@ -2,7 +2,7 @@ const defaultModel = "gemini-flash-latest";
 const fallbackModels = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"];
 
 export async function enrichReviewWithGemini(review, options = {}) {
-  const apiKey = options.apiKey || "";
+  const apiKey = normalizeApiKey(options.apiKey || "");
   const model = options.model || defaultModel;
   const promptLimit = Number(options.promptTokenLimit || 4500);
   const staticNarrative = buildStaticNarrative(review);
@@ -175,6 +175,11 @@ async function callGemini({ apiKey, model, prompt }) {
 
   if (!response.ok) {
     const text = await response.text();
+    if (/API key not valid|API_KEY_INVALID|invalid api key/i.test(text)) {
+      throw new Error(
+        "Gemini review skipped: the backend GEMINI_API_KEY is invalid. Copy the full key from Google AI Studio and update Railway."
+      );
+    }
     throw new Error(`Gemini review skipped: ${response.status} ${text.slice(0, 120)}`);
   }
 
@@ -238,4 +243,12 @@ function stringOr(value, fallback) {
 
 export function estimateTokens(text) {
   return Math.ceil(String(text).length / 4);
+}
+
+function normalizeApiKey(value) {
+  return String(value)
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/^GEMINI_API_KEY=/, "")
+    .trim();
 }
