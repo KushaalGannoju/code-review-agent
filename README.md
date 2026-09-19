@@ -1,6 +1,6 @@
-# Code Review Agent
+# CodeArgus
 
-Code Review Agent is a web reviewer for student GitHub projects. Paste a public GitHub repository URL and the app clones it, analyzes supported Python and JavaScript/TypeScript files, scores the repository, and produces practical review notes.
+CodeArgus is a web reviewer for student GitHub projects. Paste a public GitHub repository URL and the app clones it, analyzes supported Python and JavaScript/TypeScript files, scores the repository, and produces practical review notes.
 
 Version 2 combines deterministic static analysis with an optional Gemini free-tier review layer. The app still works without a Gemini key, but when `GEMINI_API_KEY` is configured the reviewer notes become more natural and mentor-like.
 

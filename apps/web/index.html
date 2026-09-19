@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Code Review Agent</title>
+    <title>CodeArgus</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -11,8 +11,8 @@
       <header class="hero">
         <nav class="nav-row" aria-label="Project navigation">
           <a class="brand-mark" href="https://github.com/KushaalGannoju/code-review-agent">
-            <span class="mark-glyph">CR</span>
-            <span>Code Review Agent</span>
+            <span class="mark-glyph">CA</span>
+            <span>CodeArgus</span>
           </a>
           <div class="nav-meta">
             <span>Python</span>
@@ -23,11 +23,11 @@
 
         <section class="hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow">Static analysis plus free-tier LLM review</p>
-            <h1>Paste a repo. Get a review that sounds like a real teammate.</h1>
+            <p class="eyebrow">AI code review for student GitHub projects</p>
+            <h1>Catch bugs, risks, and weak tests before submission.</h1>
             <p class="hero-lede">
-              The agent clones a public GitHub project, checks Python and JavaScript for risk,
-              and uses Gemini to turn the raw signals into a practical review.
+              CodeArgus combines static analysis with Gemini reviewer notes to explain security,
+              complexity, testing gaps, and refactoring priorities in plain language.
             </p>
           </div>
 
@@ -108,7 +108,15 @@
         </div>
       </section>
 
-      <section class="workspace-grid">
+      <nav class="section-tabs" aria-label="Review sections">
+        <button class="tab-button is-active" type="button" data-target="findingsSection">Findings</button>
+        <button class="tab-button" type="button" data-target="insightsSection">Insights</button>
+        <button class="tab-button" type="button" data-target="testsSection">Tests</button>
+        <button class="tab-button" type="button" data-target="quizSection">Code Quiz</button>
+        <button class="tab-button" type="button" data-target="reportSection">PR Summary</button>
+      </nav>
+
+      <section id="findingsSection" class="review-section is-active">
         <div class="panel findings-panel">
           <div class="panel-heading">
             <div>
@@ -127,38 +135,49 @@
             Run a review to see file-level issues here.
           </div>
         </div>
+      </section>
 
-        <aside class="side-rail">
+      <section id="insightsSection" class="review-section">
+        <div class="insight-grid">
           <div class="panel">
             <h2>Language Mix</h2>
             <div id="languageList" class="compact-list empty-state">No repository analyzed.</div>
           </div>
 
           <div class="panel">
-            <h2>Suggested Tests</h2>
-            <div id="testsList" class="compact-list empty-state">No suggestions yet.</div>
-          </div>
-
-          <div class="panel">
             <h2>Complexity Hotspots</h2>
             <div id="hotspotsList" class="compact-list empty-state">No hotspots yet.</div>
           </div>
+        </div>
+      </section>
 
+      <section id="testsSection" class="review-section">
+        <div class="insight-grid two-up">
           <div class="panel">
             <h2>Generated Test Starters</h2>
             <div id="generatedTestsList" class="compact-list empty-state">No generated tests yet.</div>
           </div>
-
           <div class="panel">
-            <h2>Code Quiz</h2>
-            <div id="quizList" class="compact-list empty-state">No questions yet.</div>
+            <h2>Suggested Tests</h2>
+            <div id="testsList" class="compact-list empty-state">No suggestions yet.</div>
           </div>
+        </div>
+      </section>
 
-          <div class="panel">
-            <h2>PR Summary</h2>
-            <pre id="reportMarkdown" class="report-box">Run a review to generate a markdown summary.</pre>
-          </div>
-        </aside>
+      <section id="quizSection" class="review-section">
+        <div class="panel quiz-panel">
+          <h2>Code Quiz</h2>
+          <p class="section-copy">Use these questions to check whether you can explain the code you submitted.</p>
+          <div id="quizList" class="compact-list empty-state">No questions yet.</div>
+        </div>
+      </section>
+
+      <section id="reportSection" class="review-section">
+        <div class="panel report-panel">
+          <h2>PR Summary</h2>
+          <p class="section-copy">Copy this into a GitHub PR description or submission notes.</p>
+          <pre id="reportMarkdown" class="report-box">Run a review to generate a markdown summary.</pre>
+        </div>
       </section>
     </main>
 

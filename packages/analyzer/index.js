@@ -531,7 +531,7 @@ function buildMarkdownReport(repository, summary, insights, files) {
     .slice(0, 8);
 
   return [
-    `# Code Review Summary for ${repository.owner}/${repository.name}`,
+    `# CodeArgus Review Summary for ${repository.owner}/${repository.name}`,
     "",
     `Score: ${summary.score}/100`,
     `Files reviewed: ${summary.filesReviewed}`,

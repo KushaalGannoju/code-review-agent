@@ -24,6 +24,8 @@ const hotspotsList = document.querySelector("#hotspotsList");
 const generatedTestsList = document.querySelector("#generatedTestsList");
 const quizList = document.querySelector("#quizList");
 const reportMarkdown = document.querySelector("#reportMarkdown");
+const tabButtons = document.querySelectorAll(".tab-button");
+const reviewSections = document.querySelectorAll(".review-section");
 
 const apiBaseUrl = normalizeApiBaseUrl(
   new URLSearchParams(window.location.search).get("api") ||
@@ -57,7 +59,7 @@ reviewForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({ repoUrl, useGemini: true })
     });
 
-    const payload = await response.json();
+    const payload = await readJsonResponse(response);
     updateLimits(payload.limits);
     if (!response.ok) {
       throw new Error(payload.error || "Review failed.");
@@ -79,12 +81,20 @@ severityFilter.addEventListener("change", () => {
   }
 });
 
+tabButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = button.dataset.target;
+    tabButtons.forEach((item) => item.classList.toggle("is-active", item === button));
+    reviewSections.forEach((section) => section.classList.toggle("is-active", section.id === target));
+  });
+});
+
 async function loadLimits() {
   try {
     const response = await fetch(`${apiBaseUrl}/api/limits`, {
       headers: { "X-Review-Session": sessionId }
     });
-    const payload = await response.json();
+    const payload = await readJsonResponse(response);
     updateLimits(payload.limits);
   } catch {
     updateLimits();
@@ -122,10 +132,10 @@ function renderReview(review) {
 
 function renderNextSteps(steps = []) {
   nextStepsList.innerHTML = steps.length
-    ? `<span>Next</span>${steps
+    ? `<span class="next-label">Next steps</span><div class="next-step-list">${steps
         .slice(0, 4)
         .map((step) => `<strong>${escapeHtml(step)}</strong>`)
-        .join("")}`
+        .join("")}</div>`
     : "";
 }
 
@@ -315,6 +325,24 @@ function getOrCreateSessionId() {
 
 function normalizeApiBaseUrl(value) {
   return String(value || "").replace(/\/$/, "");
+}
+
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text.trim()) {
+    throw new Error(
+      response.ok
+        ? "The server returned an empty response."
+        : `The backend returned ${response.status} with no JSON body. Check Railway logs, CORS, and PUBLIC_API_BASE_URL.`
+    );
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      `The backend did not return JSON (${response.status}). Check Railway deployment, CORS, and PUBLIC_API_BASE_URL.`
+    );
+  }
 }
 
 function reviewStatus(review) {

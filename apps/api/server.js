@@ -20,7 +20,7 @@ const allowedOrigins = String(
   process.env.ALLOWED_ORIGINS || "http://127.0.0.1:5173,http://localhost:5173"
 )
   .split(",")
-  .map((origin) => origin.trim())
+  .map((origin) => normalizeOrigin(origin.trim()))
   .filter(Boolean);
 const limitsConfig = {
   reviews: Number(process.env.SESSION_REVIEW_LIMIT || 5),
@@ -72,7 +72,7 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`Code Review Agent running at http://${host}:${port}`);
+  console.log(`CodeArgus running at http://${host}:${port}`);
 });
 
 async function handleCreateReview(request, response) {
@@ -196,7 +196,7 @@ function pruneSessions(now) {
 }
 
 function applyCors(request, response) {
-  const origin = request.headers.origin;
+  const origin = normalizeOrigin(request.headers.origin);
   const allowOrigin =
     !origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin) ? origin || "*" : allowedOrigins[0];
 
@@ -204,6 +204,15 @@ function applyCors(request, response) {
   response.setHeader("Vary", "Origin");
   response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Review-Session");
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+}
+
+function normalizeOrigin(value) {
+  if (!value || value === "*") return value;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value.replace(/\/$/, "");
+  }
 }
 
 function parseGitHubUrl(value) {

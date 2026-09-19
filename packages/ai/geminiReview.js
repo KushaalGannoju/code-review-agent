@@ -121,7 +121,8 @@ function buildPrompt(review) {
   return [
     "You are reviewing a college programming project. Write like a practical senior student mentor, not like a generic AI assistant.",
     "Use only the static-analysis facts below. Do not invent files, line numbers, vulnerabilities, dependencies, or runtime behavior.",
-    "Be direct, natural, and specific. Avoid phrases like 'as an AI', 'it is important to note', 'delve', 'leverage', or 'potentially'.",
+    "Be direct, natural, and specific. The overview should be 5-7 useful sentences with enough detail for a student to understand what to fix first.",
+    "Avoid phrases like 'as an AI', 'it is important to note', 'delve', 'leverage', or 'potentially'.",
     "Return strict JSON with this shape:",
     '{"headline":"short title","overview":"3-5 natural sentences","priorities":[{"title":"short","severity":"critical|high|medium|low","detail":"one practical sentence"}],"nextSteps":["short step","short step","short step"]}',
     JSON.stringify(compactReview)
@@ -166,7 +167,7 @@ async function callGemini({ apiKey, model, prompt }) {
       ],
       generationConfig: {
         temperature: 0.45,
-        maxOutputTokens: 900,
+        maxOutputTokens: 1400,
         responseMimeType: "application/json"
       }
     })
@@ -200,7 +201,7 @@ function parseJsonText(text) {
 function normalizeNarrative(payload, fallback) {
   return {
     headline: stringOr(payload.headline, fallback.headline).slice(0, 90),
-    overview: stringOr(payload.overview, fallback.overview).slice(0, 900),
+    overview: stringOr(payload.overview, fallback.overview).slice(0, 1400),
     priorities: Array.isArray(payload.priorities)
       ? payload.priorities.slice(0, 4).map((priority) => ({
           title: stringOr(priority.title, "Review priority").slice(0, 90),
